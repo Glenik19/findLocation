@@ -1,20 +1,31 @@
 <script>
   import { onDestroy } from "svelte";
-  import { isPointWithinRadius } from "geolib";
+  import { getDistance, getGreatCircleBearing } from "geolib";
 
   let currentPosition = null;
   let watchId = null;
   let watching = false;
 
-  // Fixes Ziel
   const target = { latitude: 42.05913363079434, longitude: 19.51725368912721 };
 
-  function insideZone() {
-    if (!currentPosition) return false;
-    return isPointWithinRadius(
+  function distanceToTarget() {
+    if (!currentPosition) return null;
+    return getDistance(
       { latitude: currentPosition.coords.latitude, longitude: currentPosition.coords.longitude },
-      target,
-      5 // Radius in Metern
+      target
+    );
+  }
+
+  function insideZone() {
+    const dist = distanceToTarget();
+    return dist !== null && dist <= 5;
+  }
+
+  function bearingToTarget() {
+    if (!currentPosition) return 0;
+    return getGreatCircleBearing(
+      { latitude: currentPosition.coords.latitude, longitude: currentPosition.coords.longitude },
+      target
     );
   }
 
@@ -39,28 +50,34 @@
   onDestroy(() => stopWatching());
 </script>
 
-<div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-  <!-- Start / Stop Button -->
-  {#if !watching}
-    <button
-      class="mb-6 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-500"
-      on:click={startWatching}
-    >
-      Start
-    </button>
-  {:else}
-    <button
-      class="mb-6 rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-500"
-      on:click={stopWatching}
-    >
-      Stop
-    </button>
-  {/if}
+<div class="min-h-screen flex flex-col items-center justify-center bg-gray-900">
+  <!-- Start / Stop -->
+  <div class="mb-6 flex gap-4">
+    {#if !watching}
+      <button class="rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold shadow hover:bg-blue-500 transition" on:click={startWatching}>Start</button>
+    {:else}
+      <button class="rounded-lg bg-red-600 px-6 py-3 text-white font-semibold shadow hover:bg-red-500 transition" on:click={stopWatching}>Stop</button>
+    {/if}
+  </div>
 
-  <!-- Kreis -->
-  <div
-    class="h-64 w-64 rounded-full border-4 transition-colors duration-500"
-    class:bg-green-500={insideZone()}
-    class:bg-red-500={!insideZone()}
-  ></div>
+  <!-- Kreis mit Pfeil -->
+  <div class="relative flex items-center justify-center h-80 w-80 rounded-full border-8 border-gray-700 transition-colors duration-500"
+       class:bg-green-500={insideZone()}
+       class:bg-red-600={!insideZone()}>
+
+    {#if currentPosition}
+      <!-- Pfeil nach außen vom Zentrum -->
+      <div
+        class="absolute text-white text-5xl"
+        style="transform: rotate({bearingToTarget()}deg) translateY(-120px);"
+      >
+        ▲
+      </div>
+
+      <!-- Distanzanzeige -->
+      <div class="absolute bottom-6 text-2xl font-bold text-white drop-shadow">
+        {distanceToTarget()} m
+      </div>
+    {/if}
+  </div>
 </div>
