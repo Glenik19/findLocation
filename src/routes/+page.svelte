@@ -1,24 +1,21 @@
 <script>
   import { onDestroy } from "svelte";
-  import { getDistance } from "geolib";
+  import { isPointWithinRadius } from "geolib";
 
   let currentPosition = null;
   let watchId = null;
   let watching = false;
 
-  // Zielkoordinaten (ändern wenn nötig)
-  let target = { latitude: 42.05913363079434, longitude: 19.51725368912721 };
-
-  function distanceMeters() {
-    if (!currentPosition) return null;
-    return getDistance(
-      { latitude: currentPosition.coords.latitude, longitude: currentPosition.coords.longitude },
-      target
-    );
-  }
+  // Fixes Ziel
+  const target = { latitude: 42.05913363079434, longitude: 19.51725368912721 };
 
   function insideZone() {
-    return (distanceMeters() ?? Infinity) <= 15;
+    if (!currentPosition) return false;
+    return isPointWithinRadius(
+      { latitude: currentPosition.coords.latitude, longitude: currentPosition.coords.longitude },
+      target,
+      5 // Radius in Metern
+    );
   }
 
   function startWatching() {
@@ -27,7 +24,7 @@
     watchId = navigator.geolocation.watchPosition(
       (pos) => (currentPosition = pos),
       () => (watching = false),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
   }
 
@@ -43,7 +40,7 @@
 </script>
 
 <div class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-  <!-- Start / Stop -->
+  <!-- Start / Stop Button -->
   {#if !watching}
     <button
       class="mb-6 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-500"
@@ -66,11 +63,4 @@
     class:bg-green-500={insideZone()}
     class:bg-red-500={!insideZone()}
   ></div>
-
-  <!-- Optional: Text -->
-  <p class="mt-4 text-sm text-gray-700">
-    {#if distanceMeters() !== null}
-      Distanz: {Math.round(distanceMeters())} m – {insideZone() ? "Inside" : "Outside"}
-    {/if}
-  </p>
 </div>
