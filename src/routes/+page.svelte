@@ -50,8 +50,10 @@
   onDestroy(() => stopWatching());
 </script>
 
-<div class="min-h-screen flex flex-col items-center justify-center bg-gray-900">
-  <!-- Start / Stop -->
+<!-- Fixed Container -->
+<div class="fixed top-0 left-0 w-full h-[100dvh] flex flex-col items-center justify-center bg-gray-900">
+
+  <!-- Start / Stop Buttons -->
   <div class="mb-6 flex gap-4">
     {#if !watching}
       <button class="rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold shadow hover:bg-blue-500 transition" on:click={startWatching}>Start</button>
@@ -66,11 +68,8 @@
        class:bg-red-600={!insideZone()}>
 
     {#if currentPosition}
-      <!-- Pfeil nach außen vom Zentrum -->
-      <div
-        class="absolute text-white text-5xl"
-        style="transform: rotate({bearingToTarget()}deg) translateY(-120px);"
-      >
+      <!-- Pfeil nach außen -->
+      <div class="absolute text-white text-5xl" style="transform: rotate({bearingToTarget()}deg) translateY(-120px);">
         ▲
       </div>
 
