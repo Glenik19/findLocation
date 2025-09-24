@@ -13,7 +13,11 @@
   let beta = 0;
   let gamma = 0;
 
-  // Berechnungen
+  // Batterie
+  let batteryLevel = null;
+  let charging = null;
+
+  // Distanz & Bearing
   function distanceToTarget() {
     if (!currentPosition) return null;
     return getDistance(
@@ -35,7 +39,6 @@
     );
   }
 
-  // Pfeilrichtung = Zielrichtung - Geräteausrichtung
   function arrowRotation() {
     if (!currentPosition) return 0;
     let bearing = bearingToTarget();
@@ -50,7 +53,7 @@
     gamma = Math.round(event.gamma ?? 0);
   }
 
-  // Start Button → GPS + Sensor-Permission
+  // Start GPS + Sensor
   async function startWatching() {
     if (!("geolocation" in navigator)) return;
     watching = true;
@@ -61,7 +64,7 @@
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
-    // Sensor Permission abfragen (iOS braucht das)
+    // iOS Permission für Orientation
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
       try {
@@ -74,10 +77,23 @@
         console.error("Orientation permission error:", e);
       }
     } else {
-      // Android / Desktop
       window.addEventListener("deviceorientationabsolute", handleOrientation, true);
       window.addEventListener("deviceorientation", handleOrientation, true);
     }
+
+    // Batterie-API
+    if (navigator.getBattery) {
+      const battery = await navigator.getBattery();
+      updateBattery(battery);
+
+      battery.addEventListener("levelchange", () => updateBattery(battery));
+      battery.addEventListener("chargingchange", () => updateBattery(battery));
+    }
+  }
+
+  function updateBattery(battery) {
+    batteryLevel = Math.round(battery.level * 100);
+    charging = battery.charging;
   }
 
   function stopWatching() {
@@ -93,7 +109,7 @@
   onDestroy(() => stopWatching());
 </script>
 
-<!-- Fixed Fullscreen -->
+<!-- Fullscreen Layout -->
 <div class="fixed top-0 left-0 w-full h-[100dvh] flex flex-col items-center justify-center bg-gray-900">
 
   <!-- Buttons -->
@@ -132,8 +148,17 @@
 
   <!-- Sensor Debug -->
   <div class="mt-8 text-white text-lg font-mono text-center">
-    <p>Alpha: {alpha}°</p>
-    <p>Beta: {beta}°</p>
-    <p>Gamma: {gamma}°</p>
+    <p>(Alpha): {alpha}°</p>
+    <p>(Beta): {beta}°</p>
+    <p>(Gamma ): {gamma}°</p>
+  </div>
+
+  <!-- Batterie Status -->
+  <div class="mt-6 text-white text-lg font-mono text-center">
+    {#if batteryLevel !== null}
+      <p>Batterie: {batteryLevel}%</p>
+    {:else}
+      <p>Batterie-Status nicht verfügbar</p>
+    {/if}
   </div>
 </div>
