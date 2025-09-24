@@ -27,7 +27,6 @@
     return dist !== null && dist <= 5;
   }
 
-  // Fixierter Bearing vom User zum Ziel
   function bearingToTarget() {
     if (!currentPosition) return 0;
     return getGreatCircleBearing(
@@ -36,18 +35,49 @@
     );
   }
 
-  // GPS starten / stoppen
-  function startWatching() {
+  // Pfeilrichtung = Zielrichtung - Geräteausrichtung
+  function arrowRotation() {
+    if (!currentPosition) return 0;
+    let bearing = bearingToTarget();
+    let heading = alpha;
+    return bearing - heading;
+  }
+
+  // Orientation Handler
+  function handleOrientation(event) {
+    alpha = Math.round(event.alpha ?? 0);
+    beta = Math.round(event.beta ?? 0);
+    gamma = Math.round(event.gamma ?? 0);
+  }
+
+  // Start Button → GPS + Sensor-Permission
+  async function startWatching() {
     if (!("geolocation" in navigator)) return;
     watching = true;
+
     watchId = navigator.geolocation.watchPosition(
       (pos) => (currentPosition = pos),
       () => (watching = false),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
 
-    // Orientation Events starten
-    window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+    // Sensor Permission abfragen (iOS braucht das)
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+      try {
+        const response = await DeviceOrientationEvent.requestPermission();
+        if (response === "granted") {
+          window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+          window.addEventListener("deviceorientation", handleOrientation, true);
+        }
+      } catch (e) {
+        console.error("Orientation permission error:", e);
+      }
+    } else {
+      // Android / Desktop
+      window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+      window.addEventListener("deviceorientation", handleOrientation, true);
+    }
   }
 
   function stopWatching() {
@@ -57,34 +87,23 @@
     }
     watching = false;
     window.removeEventListener("deviceorientationabsolute", handleOrientation, true);
-  }
-
-  function handleOrientation(event) {
-    alpha = Math.round(event.alpha ?? 0); // Heading (Kompass)
-    beta = Math.round(event.beta ?? 0);
-    gamma = Math.round(event.gamma ?? 0);
-  }
-
-  // Pfeilrichtung = Zielrichtung - Geräteausrichtung
-  function arrowRotation() {
-    if (!currentPosition) return 0;
-    let bearing = bearingToTarget(); // Richtung vom User → Ziel
-    let heading = alpha; // Aktuelle Blickrichtung
-    return bearing - heading; // Differenz = wo der Pfeil hinzeigen soll
+    window.removeEventListener("deviceorientation", handleOrientation, true);
   }
 
   onDestroy(() => stopWatching());
 </script>
 
-<!-- Fixed Fullscreen Container -->
+<!-- Fixed Fullscreen -->
 <div class="fixed top-0 left-0 w-full h-[100dvh] flex flex-col items-center justify-center bg-gray-900">
 
-  <!-- Start / Stop Buttons -->
+  <!-- Buttons -->
   <div class="mb-6 flex gap-4">
     {#if !watching}
-      <button class="rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold shadow hover:bg-blue-500 transition" on:click={startWatching}>Start</button>
+      <button class="rounded-lg bg-blue-600 px-6 py-3 text-white font-semibold shadow hover:bg-blue-500 transition"
+              on:click={startWatching}>Start</button>
     {:else}
-      <button class="rounded-lg bg-red-600 px-6 py-3 text-white font-semibold shadow hover:bg-red-500 transition" on:click={stopWatching}>Stop</button>
+      <button class="rounded-lg bg-red-600 px-6 py-3 text-white font-semibold shadow hover:bg-red-500 transition"
+              on:click={stopWatching}>Stop</button>
     {/if}
   </div>
 
@@ -94,7 +113,7 @@
        class:bg-red-600={!insideZone()}>
 
     {#if currentPosition}
-      <!-- Weißer Pfeil -->
+      <!-- Pfeil -->
       <div 
         class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
         style="transform: rotate({arrowRotation()}deg) translateY(-120px);"
@@ -111,10 +130,10 @@
     {/if}
   </div>
 
-  <!-- Orientation Debug -->
+  <!-- Sensor Debug -->
   <div class="mt-8 text-white text-lg font-mono text-center">
-    <p>(Alpha): {alpha}°</p>
-    <p>(Beta): {beta}°</p>
-    <p>(Gamma): {gamma}°</p>
+    <p>Alpha: {alpha}°</p>
+    <p>Beta: {beta}°</p>
+    <p>Gamma: {gamma}°</p>
   </div>
 </div>
