@@ -8,6 +8,12 @@
 
   const target = { latitude: 42.05913363079434, longitude: 19.51725368912721 };
 
+  // Sensorwerte
+  let alpha = 0;
+  let beta = 0;
+  let gamma = 0;
+
+  // Berechnungen
   function distanceToTarget() {
     if (!currentPosition) return null;
     return getDistance(
@@ -21,6 +27,7 @@
     return dist !== null && dist <= 5;
   }
 
+  // Fixierter Bearing vom User zum Ziel
   function bearingToTarget() {
     if (!currentPosition) return 0;
     return getGreatCircleBearing(
@@ -29,6 +36,7 @@
     );
   }
 
+  // GPS starten / stoppen
   function startWatching() {
     if (!("geolocation" in navigator)) return;
     watching = true;
@@ -37,6 +45,9 @@
       () => (watching = false),
       { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
     );
+
+    // Orientation Events starten
+    window.addEventListener("deviceorientationabsolute", handleOrientation, true);
   }
 
   function stopWatching() {
@@ -45,12 +56,27 @@
       watchId = null;
     }
     watching = false;
+    window.removeEventListener("deviceorientationabsolute", handleOrientation, true);
+  }
+
+  function handleOrientation(event) {
+    alpha = Math.round(event.alpha ?? 0); // Heading (Kompass)
+    beta = Math.round(event.beta ?? 0);
+    gamma = Math.round(event.gamma ?? 0);
+  }
+
+  // Pfeilrichtung = Zielrichtung - Geräteausrichtung
+  function arrowRotation() {
+    if (!currentPosition) return 0;
+    let bearing = bearingToTarget(); // Richtung vom User → Ziel
+    let heading = alpha; // Aktuelle Blickrichtung
+    return bearing - heading; // Differenz = wo der Pfeil hinzeigen soll
   }
 
   onDestroy(() => stopWatching());
 </script>
 
-<!-- Fixed Container -->
+<!-- Fixed Fullscreen Container -->
 <div class="fixed top-0 left-0 w-full h-[100dvh] flex flex-col items-center justify-center bg-gray-900">
 
   <!-- Start / Stop Buttons -->
@@ -68,9 +94,14 @@
        class:bg-red-600={!insideZone()}>
 
     {#if currentPosition}
-      <!-- Pfeil nach außen -->
-      <div class="absolute text-white text-5xl" style="transform: rotate({bearingToTarget()}deg) translateY(-120px);">
-        ▲
+      <!-- Weißer Pfeil -->
+      <div 
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+        style="transform: rotate({arrowRotation()}deg) translateY(-120px);"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2l6 10H6l6-10z" />
+        </svg>
       </div>
 
       <!-- Distanzanzeige -->
@@ -78,5 +109,12 @@
         {distanceToTarget()} m
       </div>
     {/if}
+  </div>
+
+  <!-- Orientation Debug -->
+  <div class="mt-8 text-white text-lg font-mono text-center">
+    <p>(Alpha): {alpha}°</p>
+    <p>(Beta): {beta}°</p>
+    <p>(Gamma): {gamma}°</p>
   </div>
 </div>
