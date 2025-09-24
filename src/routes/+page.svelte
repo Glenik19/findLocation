@@ -150,13 +150,13 @@
   <div class="mt-8 text-white text-lg font-mono text-center">
     <p>(Alpha): {alpha}°</p>
     <p>(Beta): {beta}°</p>
-    <p>(Gamma ): {gamma}°</p>
+    <p>(Gamma): {gamma}°</p>
   </div>
 
   <!-- Batterie Status -->
   <div class="mt-6 text-white text-lg font-mono text-center">
     {#if batteryLevel !== null}
-      <p>Batterie: {batteryLevel}%</p>
+      <p>Batterie: {batteryLevel}% {charging ? "(Lädt 🔌)" : "(Entlädt 🔋)"}</p>
     {:else}
       <p>Batterie-Status nicht verfügbar</p>
     {/if}
